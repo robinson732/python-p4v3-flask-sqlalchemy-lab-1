@@ -1,27 +1,45 @@
 # server/app.py
-#!/usr/bin/env python3
 
-from flask import Flask, make_response
+from flask import Flask, jsonify
 from flask_migrate import Migrate
-
 from models import db, Earthquake
 
+# Create Flask app
 app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///app.db'
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.json.compact = False
 
-migrate = Migrate(app, db)
+# Configure database
+app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///app.db"
+app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+
+# Initialize extensions
 db.init_app(app)
+migrate = Migrate(app, db)
 
 
-@app.route('/')
-def index():
-    body = {'message': 'Flask SQLAlchemy Lab 1'}
-    return make_response(body, 200)
+# ----------------------
+# Routes
+# ----------------------
 
-# Add views here
+# Get earthquake by ID
+@app.route("/earthquakes/<int:id>")
+def get_earthquake(id):
+    quake = Earthquake.query.filter_by(id=id).first()
+    if quake:
+        return jsonify(quake.to_dict()), 200
+    else:
+        return jsonify({"message": f"Earthquake {id} not found."}), 404
 
 
-if __name__ == '__main__':
+# Get earthquakes by minimum magnitude
+@app.route("/earthquakes/magnitude/<float:magnitude>")
+def get_quakes_by_magnitude(magnitude):
+    quakes = Earthquake.query.filter(Earthquake.magnitude >= magnitude).all()
+    return jsonify({
+        "count": len(quakes),
+        "quakes": [q.to_dict() for q in quakes]
+    }), 200
+
+
+# Run the app
+if __name__ == "__main__":
     app.run(port=5555, debug=True)
